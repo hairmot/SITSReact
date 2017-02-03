@@ -1,4 +1,4 @@
-"#SITSReact" 
+#SITSReact
 
 A proof of concept to redesign Vistas in SITS using tasking and React.
 

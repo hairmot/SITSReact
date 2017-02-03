@@ -1,43 +1,88 @@
-var dataModel = [];
-var ajaxResult = [];
+class SvTable extends React.Component {
+	constructor(props) {
+		super(props);
+	}
+	
+	render() {
+		var inpts = this.props.formcol.map(a =>  {return <SvTableRow inputs={a.fields} key={a.record} record={a.record}  />});	
+		var cols = this.props.formcol[0].fields.map(a => <th key={"header" + a.id}>{a.id}</th>);
+		return (
+			<table className="sv-table sv-table-striped sv-table-bordered">
+				<thead>
+					<tr>
+					{cols}				
+					</tr>
+				</thead>
+				<tbody>
+				{inpts}
+				</tbody>
+			</table>
+		)
+	}	
+}
 
 class SvTableRow extends React.Component {
 	constructor(props) {
 		super(props);
+		this.state = {"SLP_CODE":this.props.record, dataModel:[]};
+		this.handleSubmit = this.handleSubmit.bind(this);
 	}
 	render() {
-		var inputs = this.props.inputs.map(a =>  {return <SvTableCell key={a.id} val={a.val} id={a.id} label={a.label} />}	);
+		var inputs = this.props.inputs.map(a =>  {return <SvTableCell key={a.id} val={a.val} id={a.id} label={a.label} primaryKey={a.primaryKey} dataModel={this.state.dataModel}  handleSubmit={this.handleSubmit} />}	);
 		
 		return (
-				//<div className="sv-form-horizontal">
 				<tr>
 					{inputs}
 				</tr>
-				//<div className="sv-form-group">
-					//<SubmitBtn handleSubmit={this.handleSubmit} label="Submit" />
-				//</div>
-			//</div>
 		)
 	}
 	
 	handleSubmit(event) {
-		
+		var updateData = '';
 		event.preventDefault();
-		$('#ANSWER\\.TTQ\\.MENSYS\\.2\\.').val(Object.keys(dataModel).map(a => a + "=" + dataModel[a]).join(String.fromCharCode(27) + ';'));		
+		updateData = Object.keys(this.state.dataModel).map(a => a + "=" + this.state.dataModel[a]).join(String.fromCharCode(27) + ';');
+
+		$('#ANSWER\\.TTQ\\.MENSYS\\.2\\.').val(updateData);	
+		$('#ANSWER\\.TTQ\\.MENSYS\\.1\\.').val(this.state.SLP_CODE);		
 		var formData = $('form[action="SIW_TTQ"]').serialize();
 		formData += "&NEXT.DUMMY.MENSYS.1=NEXT";
+		console.log(updateData);
 		$.ajax({			type:'POST',			url:'SIW_TTQ',			data: formData		}		).done(function(data) {		
-		console.log(data);});
-		
-		//ReactDOM.unmountComponentAtNode(document.getElementById('container'));
+		//console.log(data);
+		});		
 		return false;
 	}
+}
+
+class SvTableCell extends React.Component {
+	constructor(props) {
+		super(props);
+		this.state = {val:props.val,primaryKey:props.primaryKey,dataModel:this.props.dataModel};		
+		this.update = this.update.bind(this);		
+	}
+	render() {
+			var readOnly;
+			if (this.state.primaryKey)
+			{ readOnly = "readOnly";}
+			return (
+					<td>
+						<input id={this.props.id} type="text" onBlur={this.props.handleSubmit} className="sv-form-control" onChange={this.update} value={this.state.val} readOnly={readOnly} />
+					</td>
+			)
+		
+		
+	}
+	update(event) {
+			this.state.dataModel[this.props.id] = event.target.value;
+			this.setState({val:event.target.value});
+	}
+
 }
 
 class SvInput extends React.Component {
 	constructor(props) {
 		super(props);
-		this.state = {val:props.val};
+		this.state = {val:props.val, dataModel:this.props.dataModel};
 		this.update = this.update.bind(this);		
 	}
 	render() {
@@ -53,32 +98,9 @@ class SvInput extends React.Component {
 		
 	}
 	update(event) {
-			this.setState({val:event.target.value});	
-			dataModel[this.props.id] = event.target.value;
-			
-	}
-
-}
-
-class SvTableCell extends React.Component {
-	constructor(props) {
-		super(props);
-		this.state = {val:props.val};
-		this.update = this.update.bind(this);		
-	}
-	render() {
-
-		return (
-
-				<td >
-					<input id={this.props.id} type="text" className="sv-form-control" onChange={this.update} value={this.state.val}/>
-				</td>
-		);
-		
-	}
-	update(event) {
-			this.setState({val:event.target.value});	
-			dataModel[this.props.id] = event.target.value;
+				
+			this.state.dataModel[this.props.id] = event.target.value;
+			this.setState({val:event.target.value});
 			
 	}
 
@@ -95,13 +117,27 @@ class SubmitBtn extends React.Component {
 
 }
 
+class StoreBtn extends React.Component {
+	constructor(props) {
+		super(props);	
+	}
+	render() {
+		return (			
+				<input type="submit" value={this.props.label} onClick={this.props.handleSubmit} className="sv-btn sv-btn-primary sv-form-control"/>
+		)		
+	}
+
+}
+
 class RetrieveScreen extends React.Component {
 	constructor(props) {
 		super(props);
+		this.state = {dataModel:[]}
+		this.handleSubmit = this.handleSubmit.bind(this);
 	}
 	
 	render() {
-		var inputs = this.props.fields.map(a =>  {return <SvInput key={a.id} val={a.val} id={a.id} label={a.label} />}	);
+		var inputs = this.props.fields.map(a =>  {return <SvInput key={a.id} val={a.val} id={a.id} label={a.label} dataModel={this.state.dataModel} />}	);
 		return (
 			<div className="sv-form-horizontal">
 				{inputs}
@@ -112,40 +148,22 @@ class RetrieveScreen extends React.Component {
 	
 	handleSubmit(event) {
 		event.preventDefault();
-		$('#ANSWER\\.TTQ\\.MENSYS\\.1\\.').val(Object.keys(dataModel).map(a => a + "=" + dataModel[a].replace('*', String.fromCharCode(16))).join(String.fromCharCode(27) + ';'));
+		$('#ANSWER\\.TTQ\\.MENSYS\\.1\\.').val(Object.keys(this.state.dataModel).map(a => a + "=" + this.state.dataModel[a].replace('*', String.fromCharCode(16))).join(String.fromCharCode(27) + ';'));
 		var formData = $('form[action="SIW_TTQ"]').serialize();
 		formData += "&NEXT.DUMMY.MENSYS.1=NEXT";
 		$.ajax({			type:'POST',			url:'SIW_TTQ',			data: formData		}		).done(function(data) {	
 			ReactDOM.unmountComponentAtNode(document.getElementById('container'));
 			var inpts = JSON.parse($($.parseHTML(data)).find("#ajaxResult").html());
-			console.log($($.parseHTML(data)).find("#ajaxResult").html());
 			inpts.shift();	
 			
 			
 			ReactDOM.render(
-				<MultiFormRender formcol={inpts} />,  document.getElementById('container')
+				<SvTable formcol={inpts} />,  document.getElementById('container')
 			);
 		});
 		
 	}
 }
-
-class MultiFormRender extends React.Component {
-	constructor(props) {
-		super(props);
-	}
-	
-	render() {
-		var inpts = this.props.formcol.map(a =>  {return <SvTableRow inputs={a.fields} key={a.record}  />}	);		
-		return (
-			<table className="sv-table sv-table-striped">
-				{inpts}
-			</table>
-		)
-	}
-	
-}
-
 
 ReactDOM.render(
   <RetrieveScreen fields={fields} />,  document.getElementById('container')
